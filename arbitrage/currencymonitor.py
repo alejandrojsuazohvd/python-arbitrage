@@ -1,17 +1,18 @@
 import threading
 
+
 class CurrencyMonitor:
 
     def __init__(self, from_currency, to_currency, client):
         self.currencyPair = from_currency + "-" + to_currency
-        self.runningPrice = -1
+        self.runningPrice = {}
         self.client = client
-        self.workerThread = threading.Thread(target=self.run_socket_connection_for_crypto_pair, args=(self.client,))
+        self.workerThread = threading.Thread(target=self.run_socket_connection_for_crypto_pair, args=())
 
     def handler(self, msg):
         # Expected msg format:
         # {'exchange': 'gemini', 'pair': 'ltc-eth', 'channel': 'orderbook', 'snapshot': False, 'sequence': 3521409, 'content': {'asks': [{'price': '0.2245', 'quantity': '1'}], 'bids': []}}
-        self.runningPrice = msg['content']['asks'][0]['price']
+        self.runningPrice = msg
 
     def run_socket_connection_for_crypto_pair(self):
         # chart_exchange_rate_for_transaction('eth', 'btc')

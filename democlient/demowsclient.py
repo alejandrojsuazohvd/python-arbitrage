@@ -25,5 +25,8 @@ class DemoWSClient:
             time.sleep(1)
             handler(self.generate_data(config))
 
+    def connect(self):
+        print("Demonstration client in use.")
+
     def disconnect(self):
         self.subscriptionRunning = False
