@@ -6,7 +6,7 @@ This is a python arbitrage application that trades currencies between Zcash, Bit
 This application attemps to capitalize on fluctuations of cryptocurrency relative values and trading to facilitate profit through arbitrage.
 
 ### Demonstration Video
-https://youtu.be/F1iulEh_GGw
+https://youtu.be/EOquJIZUOaI
 
 ### High Level Design
 ![Image of High Level Design](https://drive.google.com/uc?export=download&id=1cwRVs0sIHR3WCb2rPSTTJA3GPxfw--0e)
