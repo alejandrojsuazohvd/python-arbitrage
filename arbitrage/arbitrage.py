@@ -93,7 +93,7 @@ class Arbitrage:
             from_currency.upper(),          # Ex: 'BTC' : API expects uppercase
             to_currency.upper(),            # Ex: 'ETH' : API expects uppercase
             str(amount_from_currency),   # amount of from_currency is always casted to a string as api expects a serializable format.
-            True                    # enable Shrimpy smart_routing
+            False                    # enable Shrimpy smart_routing
         )
 
         logDict = {'msg': 'Order made!', 'from': from_currency, 'to': to_currency, 'amount': str(amount_from_currency), 'tradeMeta': order_response}
