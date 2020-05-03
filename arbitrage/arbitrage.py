@@ -74,11 +74,8 @@ class Arbitrage:
     # Log to a file by appending new content to the top to show most recent trades. (46 is used in the seek and truncate to keep my header)
     def log(self, content):
         line = "<div>" + time.ctime() + " : " + str(content) + "<div>"
-        with open("index.html", 'r+') as f:
-            f.seek(44)
-            oldLogs = f.read()
-            f.truncate(44)
-            f.write(line + oldLogs)
+        with open("index.html", 'a') as f:
+            f.write(line)
 
     # Need to make sure that the log is non blocking so trades can continue.
     def non_blocking_log(self, content):
@@ -162,8 +159,7 @@ class Arbitrage:
         waitForRequest = True
         while waitForRequest:
             tradeInfo = self.get_trade_status(trade_id)
-            if tradeInfo.get('trade').get(
-                    'errorCode') is not 0:  # Using get trade status response object https://developers.shrimpy.io/docs/#get-trade-status
+            if tradeInfo.get('trade').get('errorCode') != 0:  # Using get trade status response object https://developers.shrimpy.io/docs/#get-trade-status
                 self.non_blocking_log("ERROR OCCURED During trading: " + str(tradeInfo))
                 print("ERROR OCCURED During trading: SEE LOG: ", tradeInfo)
                 self.end_arbitrage()

@@ -1,4 +1,4 @@
-FROM python:3
+FROM python:latest
 
 ADD pythonArbitrage.py /home
 COPY arbitrage /home/arbitrage
