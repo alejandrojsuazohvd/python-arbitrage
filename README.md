@@ -33,6 +33,12 @@ if ratio_AB > ratio_AC & ratio_CB
       then trade A -> C -> B -> A
 ```
 
+These have been unit tested for accuracy and you can run the unit tests with the following.
+
+You must be in the python-arbitrage directory then type: 
+```bash
+python -m unittest test/arbitrageTester.py 
+``` 
 
 ### Requirements
 Must have Python3 installed.
@@ -113,7 +119,7 @@ Is it profitable?
 - Sadly, no. There are a few limitations that I discovered throughout the process. 
     - 1.) Market trades take time. Especially if you're going through intermediary companies.
     - 2.) Fees are extraordinarily high.
-    - 3.) For trades to succeed you need accurate information. Some trading pair order books can have lackluster trust. 
+    - 3.) For arbitrage trades to succeed you need accurate information. Some trading pair order books can have lackluster trust. 
     - 4.) Market fluctuations make it difficult to keep track of overall USD value although quantity of crytocurrency is known.
     
 Can this be improved?
