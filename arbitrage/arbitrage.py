@@ -66,16 +66,19 @@ class Arbitrage:
         # Balance will have contents like: {'retrievedAt': '2020-05-02T17:16:17.000Z', 'balances': [{'symbol': 'USD', 'nativeValue': 1, 'btcValue': 0.000111548758909942, 'usdValue': 1}, {'symbol': 'BTC', 'nativeValue': 0.00442322496144, 'btcValue': 0.00442322496144, 'usdValue': 39.6528388541828}, {'symbol': 'ETH', 'nativeValue': 0.041382, 'btcValue': 0.00098820216, 'usdValue': 8.8589256362576}]}
         for balance in self.balance['balances']:
             if balance['symbol'] == currency.upper():
-                return balance['nativeValue']
+                return Decimal(balance['nativeValue']).quantize(Decimal('.00000001'), rounding=ROUND_DOWN)
 
         print("ERROR: No balance found for symbol: ", currency)
         return '0'
 
-    # Log to a file by appending.
+    # Log to a file by appending new content to the top to show most recent trades. (46 is used in the seek and truncate to keep my header)
     def log(self, content):
-        f = open("trade-log.txt", "a")
-        f.write(str(content))
-        f.close()
+        line = "<div>" + time.ctime() + " : " + str(content) + "<div>"
+        with open("index.html", 'r+') as f:
+            f.seek(44)
+            oldLogs = f.read()
+            f.truncate(44)
+            f.write(line + oldLogs)
 
     # Need to make sure that the log is non blocking so trades can continue.
     def non_blocking_log(self, content):
@@ -87,21 +90,20 @@ class Arbitrage:
         order_response = self.client.create_trade(
             self.user_id,          # user_id
             self.account_id,       # account_id
-            from_currency,          # Ex: 'BTC'
-            to_currency,            # Ex: 'ETH'
-            amount_from_currency,   # amount of from_currency
+            from_currency.upper(),          # Ex: 'BTC' : API expects uppercase
+            to_currency.upper(),            # Ex: 'ETH' : API expects uppercase
+            str(amount_from_currency),   # amount of from_currency is always casted to a string as api expects a serializable format.
             True                    # enable Shrimpy smart_routing
         )
 
-        logDict = {'msg': 'Order made!', 'from': from_currency, 'to': to_currency, 'amount': amount_from_currency, 'tradeMeta': order_response}
-        self.non_blocking_log(logDict
-                              )
+        logDict = {'msg': 'Order made!', 'from': from_currency, 'to': to_currency, 'amount': str(amount_from_currency), 'tradeMeta': order_response}
+        self.non_blocking_log(logDict)
         return order_response
 
     # Book data will use Decimal to represent monetary value since Floats and doubles have dubious precision.
     def populate_book_data(self):
         for monitor in self.currency_monitors:
-            if monitor.runningPrice.get('content') is None:
+            if monitor.runningPrice.get('content') is None or not monitor.runningPrice['content']['asks']:
                 # We exit method if any piece of information is missing
                 return False
 
@@ -149,16 +151,48 @@ class Arbitrage:
             self.account_id,  # account_id
         )
 
-    def make_arbitrage_orders(self, orderedTradesArrays):
-        for trade in orderedTradesArrays:
-            # Wait for any previous trades to complete. get_active_trades returns an empty array when there are only trades with 'completed' status
-            while self.get_active_trades(): # Due to python booleaness this evaluates to true if not empty and false if empty
+    def get_trade_status(self, trade_id):
+        return self.client.get_trade_status(
+            self.user_id,  # user_id
+            self.account_id,  # account_id
+            trade_id
+        )
+
+    def wait_for_trade_request_completion(self, trade_id):
+        waitForRequest = True
+        while waitForRequest:
+            tradeInfo = self.get_trade_status(trade_id)
+            if tradeInfo.get('trade').get(
+                    'errorCode') is not 0:  # Using get trade status response object https://developers.shrimpy.io/docs/#get-trade-status
+                self.non_blocking_log("ERROR OCCURED During trading: " + str(tradeInfo))
+                print("ERROR OCCURED During trading: SEE LOG: ", tradeInfo)
+                self.end_arbitrage()
+                return False
+            elif tradeInfo.get('trade').get('status') == "completed":
+                waitForRequest = False
+                break
+            else:
                 time.sleep(0.100)
 
+        return True
+
+    def make_arbitrage_orders(self, orderedTradesArrays):
+        for trade in orderedTradesArrays:
             self.get_balance_info()  # Get running balance to know how much to trade.
-            self.make_an_order(trade['from_currency'],
+            self.get_value_from_balance(trade['from_currency'])
+            orderResponse = self.make_an_order(trade['from_currency'],
                                trade['to_currency'],
                                self.get_value_from_balance(trade['from_currency']))
+
+            if orderResponse.get('error') is not None:
+                self.non_blocking_log("AN ERROR OCCURED asking for trade: " + str(orderResponse))
+                self.end_arbitrage()
+                return
+
+            # Wait for previous trade to complete. get_active_trades returns an empty array when there are only trades with 'completed' status
+            # On errors, break the trade loop and do not continue trading.
+            if not self.wait_for_trade_request_completion(orderResponse.get('id')):
+                break
 
     # For timely's sake I will only support two trade routes BTC -> ETH -> ZEC -> BTC and BTC -> ZEC -> ETH -> BTC
     def do_arbitrage(self):
@@ -171,6 +205,10 @@ class Arbitrage:
                 self.make_arbitrage_orders([{'from_currency': 'btc', 'to_currency': 'zec'},
                                             {'from_currency': 'zec', 'to_currency': 'eth'},
                                             {'from_currency': 'eth', 'to_currency': 'btc'}])
+
+            # This is to catch potential errors from previous trade. It is set to false if an error is returned from the exchange.
+            if not self.shouldArbitrage:
+                break
 
             should_trade = self.analyze_book_data('btc-zec', 'btc-eth', 'eth-zec')
             if should_trade:
@@ -187,6 +225,7 @@ class Arbitrage:
 
     def end_arbitrage(self):
         self.shouldArbitrage = False
-        self.workerThread.join()
         for monitor in self.currency_monitors:
             monitor.stop_monitor()
+
+        # self.workerThread.join()

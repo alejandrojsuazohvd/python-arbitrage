@@ -23,7 +23,7 @@ class DemoAPIClient:
     def __init__(self):
         # Formatted like shrimpy API: https://developers.shrimpy.io/docs/#balances
         self.balance = {'retrievedAt': '2020-05-02T17:16:17.000Z', 'balances': [{'symbol': 'BTC', 'nativeValue': 1, 'btcValue': 1, 'usdValue': 1}]}
-        self.active_trades = []
+        self.active_trades = {}
 
     def list_users(self):
         return [{'id': '1'}]
@@ -34,11 +34,11 @@ class DemoAPIClient:
     def get_balance(self, user_id, account_id):
         return self.balance
 
-    def add_active_trade(self, from_currency, to_currency, amount):
-        # Will add an active trade formatted like the real API https://developers.shrimpy.io/docs/#list-active-trades
+    def add_active_trade(self, from_currency, to_currency, amount, uuid):
+        # Will add an active trade formatted like the real API https://developers.shrimpy.io/docs/#get-trade-status
         # Using a UUID.
-        self.active_trades.append({
-                "id": uuid.uuid4(),
+        self.active_trades[uuid] = {
+                "id": uuid,
                 "fromSymbol": from_currency,
                 "toSymbol": to_currency,
                 "amount": amount,
@@ -52,22 +52,36 @@ class DemoAPIClient:
                 "maxSlippagePercent": "10",
                 "triggeredMaxSpread": False,
                 "triggeredMaxSlippage": False
-            })
+            }
 
         time.sleep(2.0)  # This will Rate limit the demonstration trades to a manageable frequency to show proper logs.
-        self.active_trades = []
+        self.active_trades[uuid] = {
+                "id": uuid,
+                "fromSymbol": from_currency,
+                "toSymbol": to_currency,
+                "amount": amount,
+                "status": "completed",
+                "success": False,
+                "errorCode": 0,
+                "errorMessage": "",
+                "exchangeApiErrors": [],
+                "smartRouting": False,
+                "maxSpreadPercent": "10",
+                "maxSlippagePercent": "10",
+                "triggeredMaxSpread": False,
+                "triggeredMaxSlippage": False
+            }
 
-    def make_timed_active_trade(self, from_currency, to_currency, amount_from_currency):
-        activeTradeThread = threading.Thread(target=self.add_active_trade, args=(from_currency, to_currency, amount_from_currency,))
+    def get_trade_status(self, user_id, account_id, trade_id):
+        return { 'trade': self.active_trades[trade_id] }
+
+    def make_timed_active_trade(self, from_currency, to_currency, amount_from_currency, uuid):
+        activeTradeThread = threading.Thread(target=self.add_active_trade, args=(from_currency, to_currency, amount_from_currency, uuid,))
         activeTradeThread.start()
 
     def create_trade(self, user_id, account_id, from_currency, to_currency, amount_from_currency, smart_route):
         # Emulate a balance change
         self.balance['balances'][0]['symbol'] = to_currency.upper()
-        self.make_timed_active_trade(from_currency, to_currency, amount_from_currency)
-        return {'id': 'Demonstration trade NO REAL MONEY HAS BEEN EXCHANGED. ', }
-
-
-    def list_active_trades(self, user_id, account_id):
-        return self.active_trades
-
+        uuidForTrade = uuid.uuid4()
+        self.make_timed_active_trade(from_currency, to_currency, amount_from_currency, str(uuidForTrade))
+        return {'id': str(uuidForTrade)}

@@ -14,9 +14,10 @@
 
 # from languageProcessing import languageClassifier
 import os
-import plotly.graph_objects as go
-import time
 import shrimpy
+import http.server
+import socketserver
+import os.path
 
 from arbitrage.arbitrage import Arbitrage
 from democlient import demowsclient
@@ -61,52 +62,18 @@ arbitrage = Arbitrage(client, [monitorBTC_ETH, monitorZEC_ETH, monitorZEC_BTC])
 
 arbitrage.begin_arbitrage()
 
-# print(arbitrage.make_an_order('ETH', 'BTC', 0.041382))
-# print(arbitrage.get_active_trades())
+if not os.path.exists("index.html"):
+    with open("index.html", "w") as f:
+        f.write("<h2>Alejandro's Arbitrage Trading Logs</h2>")
 
+PORT = 8081
 
-# monitorBTC_ETH.start_monitor()
-# monitorETH_ZEC.start_monitor()
-# monitorZEC_BTC.start_monitor()
-#
-# for n in range(0, 100):
-#     time.sleep(0.200)
-#     print("BTC_ETH: ", monitorBTC_ETH.runningPrice)
-#     print("ETH_ZEC: ", monitorETH_ZEC.runningPrice)
-#     print("ZEC_BTC: ", monitorZEC_BTC.runningPrice)
-#
-# monitorBTC_ETH.stop_monitor()
-# monitorETH_ZEC.stop_monitor()
-# monitorZEC_BTC.stop_monitor()
+Handler = http.server.SimpleHTTPRequestHandler
 
+with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    print("serving at port", PORT)
+    httpd.serve_forever()
 
-# def chart_exchange_rate_for_transaction(from_currency, to_currency):
-#     candles = client.get_candles(
-#         'bittrex', # exchange
-#         from_currency,     # base_trading_symbol
-#         to_currency,     # quote_trading_symbol
-#         '1d'       # interval
-#     )
-#
-#     dates = []
-#     open_data = []
-#     high_data = []
-#     low_data = []
-#     close_data = []
-#
-#     # format the data to match the plotting library
-#     for candle in candles:
-#         dates.append(candle['time'])
-#         open_data.append(candle['open'])
-#         high_data.append(candle['high'])
-#         low_data.append(candle['low'])
-#         close_data.append(candle['close'])
-#
-#     # plot the candlesticks
-#     fig = go.Figure(data=[go.Candlestick(x=dates,
-#                            open=open_data, high=high_data,
-#                            low=low_data, close=close_data)])
-#     fig.show()
 
 
 
